@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class WorldGen : MonoBehaviour {
-    Quadtree quad;
+    public Quadtree quad;
 
     private void Start() {
         World.pixels.Clear();
 
-        int size = (int)Mathf.Pow(2, 7);
+        int size = (int)Mathf.Pow(2, 5);
         for (int x = 0; x <= size; x++) {
             for (int y = 0; y <= size; y++) {
                 Vector2Int position = new Vector2Int(x, y);
@@ -17,7 +17,7 @@ public class WorldGen : MonoBehaviour {
         }
 
         quad = new Quadtree(new Vector2Int(0,0), size);
-        quad.Subdivide(7);
+        quad.Subdivide(5);
 
         Debug.Log(World.pixels.Count);
     }
@@ -39,7 +39,6 @@ public class WorldGen : MonoBehaviour {
 
 public static class World {
     public static Dictionary<Vector2Int, Pixel> pixels = new Dictionary<Vector2Int, Pixel>();
-
 
 }
 
@@ -78,6 +77,7 @@ public class Quadtree {
             depth--;
             for (int i = 0; i < 4; i++) {
                 quadtrees[i] = new Quadtree(position + GetCorner(i) * halfSize, halfSize);
+
                 if (depth > 0) {
                     if (quadtrees[i].HasSurface()) {
                         quadtrees[i].Subdivide(depth);
