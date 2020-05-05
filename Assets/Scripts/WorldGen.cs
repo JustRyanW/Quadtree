@@ -7,21 +7,32 @@ public class WorldGen : MonoBehaviour {
 
     private void Start() {
         World.pixels.Clear();
-        quad = new Quadtree(new Vector2Int(0,0), (int)Mathf.Pow(2, 5));
-        quad.Subdivide(5);
+
+        int size = (int)Mathf.Pow(2, 7);
+        for (int x = 0; x <= size; x++) {
+            for (int y = 0; y <= size; y++) {
+                Vector2Int position = new Vector2Int(x, y);
+                World.pixels[position] = new Pixel(position);
+            }
+        }
+
+        quad = new Quadtree(new Vector2Int(0,0), size);
+        quad.Subdivide(7);
 
         Debug.Log(World.pixels.Count);
     }
 
     private void OnDrawGizmos() {
-        if (quad != null) {
-            quad.DrawWire();
-        }
-
         foreach (KeyValuePair<Vector2Int, Pixel> pixel in World.pixels)
         {
-            Gizmos.color = Color.Lerp(Color.black, Color.white, pixel.Value.value);
-            Gizmos.DrawCube((Vector2)pixel.Key, Vector3.one * 0.4f);
+            // Gizmos.color = Color.Lerp(Color.black, Color.white, pixel.Value.value);
+            Gizmos.color = (pixel.Value.value >= 0.5f) ? Color.white : Color.black;
+            Gizmos.DrawCube((Vector2)pixel.Key, Vector3.one * 1f);
+        }
+
+        if (quad != null) {
+            Gizmos.color = Color.white;
+            quad.DrawWire();
         }
     }
 }
@@ -35,8 +46,8 @@ public static class World {
 public class Pixel {
     public float value;
 
-    public Pixel(float value) {
-        this.value = value;
+    public Pixel(Vector2Int position) {
+        this.value = Mathf.PerlinNoise(position.x * 0.021f, position.y * 0.021f);
     }
 }
 
@@ -54,7 +65,7 @@ public class Quadtree {
         for (int i = 0; i < 4; i++) {
             Vector2Int pos = position + GetCorner(i) * size;
             if (!World.pixels.ContainsKey(pos)) {
-                World.pixels[pos] = new Pixel(Mathf.PerlinNoise(pos.x * 0.05f, pos.y * 0.05f));
+                World.pixels[pos] = new Pixel(pos);
             }
             corners[i] = World.pixels[pos];
         }
@@ -68,7 +79,7 @@ public class Quadtree {
             for (int i = 0; i < 4; i++) {
                 quadtrees[i] = new Quadtree(position + GetCorner(i) * halfSize, halfSize);
                 if (depth > 0) {
-                    if (quadtrees[i].IsSurface()) {
+                    if (quadtrees[i].HasSurface()) {
                         quadtrees[i].Subdivide(depth);
                     }
                 }
@@ -78,15 +89,22 @@ public class Quadtree {
         }
     }
 
-    public bool IsSurface() {
+    public bool HasSurface() {
         bool inTerrain = corners[0].value > 0.5f;
-        bool isSurface = false;
-        for (int i = 1; i < 4; i++) {
-            if ((corners[i].value > 0.5f) != inTerrain) {
-               isSurface = true;
+        bool hasSurface = false;
+
+        for (int x = position.x; x <= position.x + size; x++) {
+            for (int y = position.y; y <= position.y + size; y++) {
+                Vector2Int pos = new Vector2Int(x, y);
+                if (World.pixels.ContainsKey(pos)) {
+                    if ((World.pixels[pos].value >= 0.5f) != inTerrain) {
+                        hasSurface = true;
+                    }
+                }
             }
         }
-        return isSurface;
+
+        return hasSurface;
     }
 
     public static Vector2Int GetCorner(int index) {
