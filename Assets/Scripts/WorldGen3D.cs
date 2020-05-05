@@ -8,7 +8,7 @@ public class WorldGen3D : MonoBehaviour {
     private void Start() {
         World3D.voxels.Clear();
 
-        int size = (int)Mathf.Pow(2, 5);
+        int size = (int)Mathf.Pow(2, 6);
         for (int x = 0; x <= size; x++) {
             for (int y = 0; y <= size; y++) {
                 for (int z = 0; z <= size; z++) {
@@ -19,14 +19,19 @@ public class WorldGen3D : MonoBehaviour {
         }
 
         octree = new Octree(new Vector3Int(0,0, 0), size);
-        octree.Subdivide(5);
+        octree.Subdivide(6);
 
-        Debug.Log(World3D.voxels.Count);
+        Debug.Log(World3D.surface.Count);
     }
 
     private void OnDrawGizmos() {
-        if (octree != null)
+        if (octree != null) {
             octree.DrawWire();
+        }
+
+        // foreach (Octree surface in World3D.surface) {
+        //     Gizmos.DrawWireCube(surface.position + new Vector3(0.5f, 0.5f, 0.5f) * surface.size, Vector3.one * surface.size);
+        // }
     }
 }
 
@@ -34,6 +39,7 @@ public static class World3D {
     public static Dictionary<Vector3Int, Voxel> voxels = new Dictionary<Vector3Int, Voxel>();
     public static Dictionary<Vector3Int, Octree> chunks = new Dictionary<Vector3Int, Octree>();
     public static List<Octree> surface = new List<Octree>();
+    public static Noise noise = new Noise();
 
     public static Vector3Int GetCorner(int index) {
         return new Vector3Int(
@@ -85,7 +91,7 @@ public class Octree {
         bool hasSurface = false;
         for (int x = position.x; x <= position.x + size; x++) {
             for (int y = position.y; y <= position.y + size; y++) {
-                for (int z = 0; z <= position.z + size; z++) {
+                for (int z = position.z; z <= position.z + size; z++) {
                     Vector3Int pos = new Vector3Int(x, y, z);
                     if (World3D.voxels.ContainsKey(pos)) {
                         if ((World3D.voxels[pos].value >= 0.5f) != inTerrain) {
@@ -112,6 +118,6 @@ public class Voxel {
     public float value;
 
     public Voxel(Vector3Int position) {
-        value = Random.Range(0.4999f, 1f);
+        value = World3D.noise.Evaluate((Vector3)position * 0.03f);
     }
 }
