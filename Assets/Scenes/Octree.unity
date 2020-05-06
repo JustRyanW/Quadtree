@@ -212,8 +212,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   chunksToLoad: []
   chunkSize: 4
-  lod: 2
-  renderDistance: 4
+  lod: 0
+  renderDistance: 8
   drawChunk: 1
   drawSubdivisions: 0
   drawSurface: 1
