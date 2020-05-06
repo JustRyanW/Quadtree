@@ -1,18 +1,25 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System;
 using UnityEngine;
 
 public class WorldGen3D : MonoBehaviour {
     public Chunk chunk;
-    public Queue<Vector3Int> chunksToLoad = new Queue<Vector3Int>();
+    public List<Vector3Int> chunksToLoad = new List<Vector3Int>();
+    public Queue<Chunk> chunksToUnload = new Queue<Chunk>();
 
     [Header("Settings")]
+    [Range(0, 4)]
     public int chunkSize = 4;
+    [Range(0, 4)]
     public int lod = 0;
+    [Range(0, 8)]
     public int renderDistance = 1;
 
     [Header("Debug")]
     public bool drawChunk;
+    [Range(0, 4)]
     public int drawSubdivisions;
     public bool drawSurface;
     public bool drawVoxels;
@@ -22,7 +29,6 @@ public class WorldGen3D : MonoBehaviour {
 
     private void Start() {
         World3D.voxels.Clear();
-        // new Chunk(new Vector3Int(0, 0, 0), chunkSize, lod);
     }
 
     private void Update() {
@@ -31,24 +37,44 @@ public class WorldGen3D : MonoBehaviour {
         if (newChunkPos != chunkPos) {
             chunkPos = newChunkPos;
 
-            for (int x = chunkPos.x - renderDistance; x < chunkPos.x + renderDistance; x++) {
-                for (int y = chunkPos.y - renderDistance; y < chunkPos.y + renderDistance; y++) {
-                    for (int z = chunkPos.z - renderDistance; z < chunkPos.z + renderDistance; z++) {
+            for (int x = chunkPos.x - renderDistance; x <= chunkPos.x + renderDistance; x++) {
+                for (int y = chunkPos.y - renderDistance; y <= chunkPos.y + renderDistance; y++) {
+                    for (int z = chunkPos.z - renderDistance; z <= chunkPos.z + renderDistance; z++) {
                         Vector3Int pos = new Vector3Int(x, y, z);
-                        if (!World3D.chunks.ContainsKey(pos) && !chunksToLoad.Contains(pos)) {
-                            chunksToLoad.Enqueue(pos);
+                        if (Vector3Int.Distance(pos, chunkPos) < renderDistance) {
+                            if (!World3D.chunks.ContainsKey(pos) && !chunksToLoad.Contains(pos)) {
+                                chunksToLoad.Add(pos);
+                            }
                         }
                     }
+                }
+            }       
+            chunksToLoad.Sort(SortByDistance);
+
+            foreach(KeyValuePair<Vector3Int, Chunk> chunk in World3D.chunks) {
+                if (Vector3Int.Distance(chunk.Key, chunkPos) > renderDistance) {
+                    chunksToUnload.Enqueue(chunk.Value);
                 }
             }
         }
 
-        for (int i = 0; i < 30; i++)
-        {
-            if (chunksToLoad.Count > 0) {
-                new Chunk(chunksToLoad.Dequeue(), chunkSize, lod);
+        for (int i = 0; i < 10 && chunksToLoad.Count > 0; i++) {
+            float distance = Vector3Int.Distance(chunksToLoad[0], chunkPos);
+            if (distance < renderDistance) {
+                new Chunk(chunksToLoad[0], chunkSize, (int)Math.Floor(distance * (chunkSize / (float)renderDistance)));
+                chunksToLoad.RemoveAt(0);
             }
         }
+
+        for (int i = 0; i < chunksToUnload.Count; i++) {
+            World3D.chunks.Remove(chunksToUnload.Dequeue().chunkPosition);
+        }
+    }
+
+    private int SortByDistance(Vector3Int v1, Vector3Int v2) {
+        float a = Vector3Int.Distance(v1, chunkPos);
+        float b = Vector3Int.Distance(v2, chunkPos);
+        return a.CompareTo(b);
     }
 
     private void OnDrawGizmos() {
@@ -114,13 +140,13 @@ public class Chunk {
         this.lod = lod;
         maxDepth = chunkSize - lod;
 
-        GenerateTerrainData();
+        GenerateVoxelData();
 
         octree = new Octree(position, size, this);
         octree.Subdivide(maxDepth);
     }
 
-    public void GenerateTerrainData() {
+    public void GenerateVoxelData() {
         for (int x = position.x; x <= position.x + size; x += 1 << lod) {
             for (int y = position.y; y <= position.y + size; y += 1 << lod) {
                 for (int z = position.z; z <= position.z + size; z += 1 << lod) {
