@@ -12,8 +12,8 @@ public class WorldGen3D : MonoBehaviour {
     [Header("Settings")]
     [Range(0, 4)]
     public int chunkSize = 4;
-    [Range(0, 4)]
-    public int lod = 0;
+    [Range(1, 20)]
+    public int chunkLoadSpeed = 4;
     [Range(0, 8)]
     public int renderDistance = 1;
 
@@ -58,7 +58,7 @@ public class WorldGen3D : MonoBehaviour {
             }
         }
 
-        for (int i = 0; i < 10 && chunksToLoad.Count > 0; i++) {
+        for (int i = 0; i < chunkLoadSpeed && chunksToLoad.Count > 0; i++) {
             float distance = Vector3Int.Distance(chunksToLoad[0], chunkPos);
             if (distance < renderDistance) {
                 new Chunk(chunksToLoad[0], chunkSize, (int)Math.Floor(distance * (chunkSize / (float)renderDistance)));
@@ -100,8 +100,7 @@ public class WorldGen3D : MonoBehaviour {
     private void OnValidate() {
         chunkSize = Mathf.Clamp(chunkSize, 1, 4);
         size = 1 << chunkSize;
-        lod = Mathf.Clamp(lod, 0, chunkSize);
-        drawSubdivisions = Mathf.Clamp(drawSubdivisions, 0, chunkSize - lod);
+        drawSubdivisions = Mathf.Clamp(drawSubdivisions, 0, chunkSize);
         if (World3D.voxels.Count > 10000 && drawVoxels) {
             drawVoxels = false;
             Debug.Log("Too many voxel to draw!");
